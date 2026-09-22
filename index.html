@@ -325,7 +325,7 @@ body{
   border:2px solid transparent;
   background:
     linear-gradient(#0b1430,#0b1430) padding-box,
-    linear-gradient(var(--ka,100deg),#e24bd8,#8b5cf6 50%,#22d3ee) border-box;
+    linear-gradient(var(--ka,100deg),#e24bd8,#8b5cf6 25%,#22d3ee 50%,#3dffb0 75%,#ffc857 100%) border-box;
   background-size:100% 100%;
   -webkit-animation:kilatPutar 4s linear infinite; animation:kilatPutar 4s linear infinite;
   box-shadow:0 0 16px rgba(217,70,239,.22),0 0 16px rgba(34,211,238,.18);
@@ -707,6 +707,19 @@ button.field-icon{cursor:pointer;}
   background:radial-gradient(circle,rgba(0,230,255,.15),transparent 70%);
   pointer-events:none;
 }
+/* Kartu profil: seberkas cahaya tipis melintas pelan sekali setiap 7 dtk —
+   seperti pantulan cahaya di kaca. Sengaja jauh lebih halus dan jarang
+   daripada kilatan di tombol (kartu ini bukan tombol, hanya hiasan), dan
+   memakai keyframe kilatSapuHalus yang sama dengan berkas tipis di tombol
+   (jarak tempuhnya sudah pas untuk elemen selebar ini). Ikut dijeda saat
+   kartu di luar layar lewat aturan .neon-jeda * yang sudah ada di atas. */
+.hero-kilat{
+  position:absolute; top:-4px; bottom:-4px; left:0; width:16%; z-index:2;
+  pointer-events:none; will-change:transform; border-radius:inherit;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.22) 50%,rgba(255,255,255,0));
+  -webkit-transform:translateX(-320%) skewX(-22deg); transform:translateX(-320%) skewX(-22deg);
+  -webkit-animation:kilatSapuHalus 7s ease-in-out 2.4s infinite; animation:kilatSapuHalus 7s ease-in-out 2.4s infinite;
+}
 .foto-box{flex:none;position:relative;z-index:1;}
 .foto-box img{
   display:block; width:95px; height:115px; object-fit:cover; border-radius:15px;
@@ -832,30 +845,29 @@ button.field-icon{cursor:pointer;}
 /* Logout saat diam: garis gradasi seperti tombol login + kilatan cahaya.
    Diarahkan/ditekan: bentuk sebelumnya (aturan :hover di atas). */
 #tombolLogout{
-  color:#eaf6ff; border:1.5px solid transparent;
+  color:#eaf6ff; border:2px solid transparent;
   background:
-    linear-gradient(90deg,#0a1633,#120f38) padding-box,
-    linear-gradient(var(--ka,100deg),#e24bd8,#8b5cf6 50%,#22d3ee) border-box;
+    linear-gradient(#0b1430,#0b1430) padding-box,
+    linear-gradient(var(--ka,100deg),#e24bd8,#8b5cf6 25%,#22d3ee 50%,#3dffb0 75%,#ffc857 100%) border-box;
+  background-size:100% 100%;
   -webkit-animation:kilatPutar 4s linear infinite; animation:kilatPutar 4s linear infinite;
-  box-shadow:0 0 14px rgba(217,70,239,.18),0 0 14px rgba(34,211,238,.16);
+  box-shadow:0 0 16px rgba(217,70,239,.22),0 0 16px rgba(34,211,238,.18);
 }
-#tombolLogout:hover,#tombolLogout:focus,#tombolLogout:active{
-  color:#fff; border-color:var(--h-cyan);
-  background:linear-gradient(90deg,#00bfe8,#6345ff);
-  -webkit-animation:none !important; animation:none !important;
-  box-shadow:0 0 18px rgba(0,220,255,.35);
+/* bentuk sebelumnya, sama dengan tombol LOGIN */
+#tombolLogout:hover,#tombolLogout:focus-visible,#tombolLogout:active{
+  color:#04121a; border-color:transparent;
+  background:linear-gradient(100deg,#22d3ee,#8b5cf6,#d946ef,#22d3ee);
+  background-size:300% 100%;
+  -webkit-animation:hueSlide 5s linear infinite !important; animation:hueSlide 5s linear infinite !important;
+  box-shadow:0 8px 26px rgba(34,211,238,.35);
 }
 
-/* ---------- footer di dalam kartu aplikasi ---------- */
+/* ---------- footer di dalam kartu aplikasi ----------
+   Garis tipis di atasnya saja, tanpa bingkai/kartu di sekeliling teks. */
 .kaki-hasil{
-  display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap;
-  -webkit-align-items:center; align-items:center;
-  -webkit-justify-content:center; justify-content:center;
-  margin:20px 16px 16px; padding:12px 14px; border-radius:12px;
-  background:linear-gradient(90deg,rgba(0,210,255,.10),rgba(90,40,255,.10));
-  border:1px solid rgba(0,220,255,.22);
-  color:#7f9fb4; font-family:var(--ui); font-size:12.5px; line-height:1.5;
-  text-align:center;
+  margin-top:20px; padding:18px; text-align:center;
+  border-top:1px solid rgba(0,220,255,.12);
+  color:#577f91; font-family:var(--ui); font-size:12.5px; line-height:1.6;
 }
 
 /* ---------- tabel di halaman hasil ----------
@@ -1473,6 +1485,9 @@ body.hemat-animasi #tombolLogout{
             <path d="M97.4 76v9M100 76v9M102.6 76v9"></path>
           </svg>
         </div>
+
+        <!-- hiasan neon: kilatan cahaya tipis melintas pelan (murni dekorasi) -->
+        <span class="hero-kilat" aria-hidden="true"></span>
       </section>
     </div>
 
@@ -1534,7 +1549,7 @@ body.hemat-animasi #tombolLogout{
     </button>
 
     <footer class="kaki-hasil">
-      <span class="kaki-kontak">ironemath.id &middot; +62821 1119 8883</span>
+      ironemath.id +62821 1119 8883
     </footer>
   </div>
 
