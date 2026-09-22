@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<base target="_top">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#05060f">
+<!-- siapkan sambungan ke server Apps Script & server foto sejak halaman dibuka -->
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="preconnect" href="https://lh3.googleusercontent.com">
+<link rel="preconnect" href="https://drive.google.com">
 <title>Informasi Hasil Akademik - SMAN 1 TOBOALI</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1625,6 +1632,246 @@ body.hemat-animasi #tombolLogout{
 </noscript>
 
 <script>
+/* =====================================================================
+   PENGHUBUNG KE APPS SCRIPT
+   Halaman ini dibuka langsung dari hosting sendiri (bukan di dalam bingkai
+   Apps Script), jadi memenuhi layar HP dan tanpa bar "Laporkan
+   penyalahgunaan". Data tetap diambil dari Apps Script lewat URL /exec di
+   bawah. Kode aplikasi di bawahnya sama persis dengan versi Apps Script:
+   ia tetap memanggil google.script.run, yang di sini diganti penghubung
+   ini (POST JSON ke Apps Script).
+   ===================================================================== */
+(function(){
+  'use strict';
+
+  /* >>> ISI DENGAN URL WEB APP APPS SCRIPT (yang berakhiran /exec) <<< */
+  var API_URL = 'https://script.google.com/macros/s/AKfycbzcwoteOq1uu1d8Ylj4tMkUpmGjWFbcwvx6OYJjoqP8bWbYyYSrditdcxmVVJUlVDVO/exec';
+
+  var KUNCI_AWAL = 'simfoni_awal_v1';
+  var BATAS_MS = 25000;          // batas satu panggilan
+  var MAKS_TUNGGU_MS = 3000;     // kunjungan pertama: paling lama menunggu server sebelum halaman tampil
+  var KONFIG_BAKU = {"namaApp":"SIMFONI AKADEMIK","namaSekolah":"SMA NEGERI 1 TOBOALI","logoUrl":"https://lh3.googleusercontent.com/d/1nm-7TM6NYkOCWr3ioHPCYoxlWCze23OY=w240","motivasi":"Fokus dan tetap semangat belajar","motto":"C E M E R L A N G","logoCadangan":"https://lh3.googleusercontent.com/d/1RKdw3Hc2wUyK3cRaEIS0ChZAUhHv0m6A=w240"};   // pengaturan yang ditanam saat build (cadangan)
+
+  function el(id){ return document.getElementById(id); }
+
+  /* ---------- panggilan ke server ---------- */
+  function kirim(fn, args, sukses, gagal){
+    var selesai = false, pewaktu = null, kendali = null;
+    function akhir(err, data){
+      if(selesai) return; selesai = true;
+      if(pewaktu) clearTimeout(pewaktu);
+      if(err){ gagal(err instanceof Error ? err : new Error(String(err))); }
+      else { sukses(data); }
+    }
+    if(!API_URL || API_URL.indexOf('http') !== 0){
+      akhir(new Error('URL Apps Script (API_URL) belum diisi pada halaman ini.')); return;
+    }
+    try{ if(window.AbortController){ kendali = new AbortController(); } }catch(e){}
+    pewaktu = setTimeout(function(){
+      try{ if(kendali) kendali.abort(); }catch(e){}
+      akhir(new Error('Server terlalu lama menjawab.'));
+    }, BATAS_MS);
+
+    // text/plain: permintaan "sederhana" tanpa pra-pemeriksaan CORS (Apps Script tidak menjawabnya)
+    var opsi = { method:'POST', redirect:'follow', credentials:'omit',
+                 headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+                 body: JSON.stringify({ fn: fn, args: args }) };
+    if(kendali){ opsi.signal = kendali.signal; }
+
+    fetch(API_URL, opsi).then(function(r){
+      return r.text();
+    }).then(function(teks){
+      var j;
+      try{ j = JSON.parse(teks); }
+      catch(e){ akhir(new Error('Jawaban server tidak dapat dibaca (server sibuk atau URL keliru).')); return; }
+      if(j && j.ok){ akhir(null, j.data); }
+      else { akhir(new Error((j && j.error) || 'Server menolak permintaan.')); }
+    }).catch(function(e){
+      akhir(new Error('Tidak dapat terhubung ke server' + (e && e.message ? ' (' + e.message + ')' : '') + '.'));
+    });
+  }
+
+  /* ---------- pengganti google.script.run ---------- */
+  var METODE = ['login','logout','buatPasswordBaru','perbaikiData','statusPembukaan'];
+  function buatRunner(){
+    var ok = function(){}, gagal = function(e){ if(window.console){ console.error(e); } };
+    var r = {
+      withSuccessHandler: function(f){ ok = f; return r; },
+      withFailureHandler: function(f){ gagal = f; return r; }
+    };
+    METODE.forEach(function(nama){
+      r[nama] = function(){ kirim(nama, Array.prototype.slice.call(arguments), ok, gagal); return r; };
+    });
+    return r;
+  }
+  window.google = { script: {} };
+  Object.defineProperty(window.google.script, 'run', { get: buatRunner });
+
+  /* ---------- simpanan lokal (bisa diblokir di HP) ---------- */
+  function bacaCache(){
+    try{ var t = localStorage.getItem(KUNCI_AWAL); return t ? JSON.parse(t) : null; }catch(e){ return null; }
+  }
+  function tulisCache(awal){
+    try{
+      var st = awal.status || {};
+      localStorage.setItem(KUNCI_AWAL, JSON.stringify({
+        konfig: awal.konfig,
+        dibuka: !!st.dibuka,
+        // saat belum dibuka: kapan tepatnya (menurut jam HP), supaya hitung mundur bisa
+        // langsung tampil pada kunjungan berikutnya tanpa menunggu server
+        target: (!st.dibuka && st.sisaMs > 0) ? (Date.now() + st.sisaMs) : null,
+        waktuTeks: st.waktuTeks || ''
+      }));
+    }catch(e){}
+  }
+
+  /* Status pembukaan dari simpanan, tanpa bertanya ke server. null = tidak bisa disimpulkan. */
+  function statusDariCache(c){
+    if(!c || !c.konfig) return null;
+    if(c.dibuka) return { dibuka: true, sisaMs: 0, waktuTeks: '' };
+    if(typeof c.target === 'number'){
+      var sisa = c.target - Date.now();
+      if(sisa <= 0) return { dibuka: true, sisaMs: 0, waktuTeks: '' };
+      return { dibuka: false, sisaMs: sisa, waktuTeks: c.waktuTeks || '' };
+    }
+    return null;
+  }
+
+  /* ---------- memulai aplikasi ---------- */
+  var mulaiSudah = false;
+  function mulai(awal){
+    if(mulaiSudah) return; mulaiSudah = true;
+    window.__AWAL = awal;
+    try{ if(awal.konfig && awal.konfig.namaApp){ document.title = awal.konfig.namaApp; } }catch(e){}
+    /* Kode utama (di bawah) belum dibaca browser bila pengaturan tersimpan
+       tersedia dan mulai() terpanggil seketika saat halaman masih dimuat —
+       tunggu sampai seluruh halaman selesai dibaca. */
+    function jalankan(){
+      var sc = document.createElement('script');
+      sc.text = el('kodeUtama').text;
+      document.body.appendChild(sc);
+    }
+    if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', jalankan); }
+    else { jalankan(); }
+  }
+
+  function tampilGalat(err){
+    var p = el('pembuka');
+    if(!p) return;
+    p.innerHTML = '';
+    var a = document.createElement('div');
+    a.style.cssText = 'text-align:center;color:#ffb4c0;line-height:1.5;padding:6px 4px';
+    a.appendChild(document.createTextNode('Gagal terhubung ke server.'));
+    a.appendChild(document.createElement('br'));
+    var b = document.createElement('span');
+    b.style.cssText = 'font-size:12px;opacity:.85';
+    b.appendChild(document.createTextNode(err && err.message ? err.message : ''));
+    a.appendChild(b);
+    a.appendChild(document.createElement('br'));
+    var t = document.createElement('button');
+    t.type = 'button';
+    t.className = 'btn';
+    t.style.marginTop = '14px';
+    t.appendChild(document.createTextNode('COBA LAGI'));
+    t.onclick = function(){ location.reload(); };
+    a.appendChild(t);
+    p.appendChild(a);
+  }
+
+  /* Mengambil pengaturan + status dari server. Server Apps Script kadang lambat
+     (beberapa detik sampai puluhan detik), jadi bila jawaban belum tiba setelah
+     6 detik dikirim satu permintaan cadangan; yang tiba lebih dulu dipakai.
+     Gagal cepat dicoba lagi. Paling banyak 3 permintaan. */
+  function ambilAwal(sukses, gagal){
+    var selesai = false, diluncurkan = 0, berjalan = 0, pewaktu = null;
+    function luncurkan(){
+      if(selesai || diluncurkan >= 3) return;
+      diluncurkan++; berjalan++;
+      kirim('awal', [], function(data){
+        berjalan--;
+        if(selesai) return;
+        selesai = true; clearTimeout(pewaktu);
+        sukses(data);
+      }, function(err){
+        berjalan--;
+        if(selesai) return;
+        clearTimeout(pewaktu);
+        if(diluncurkan < 3){ pewaktu = setTimeout(luncurkan, 600); }
+        else if(berjalan === 0){ selesai = true; gagal(err); }
+      });
+      if(diluncurkan === 1){ clearTimeout(pewaktu); pewaktu = setTimeout(luncurkan, 6000); }
+    }
+    luncurkan();
+  }
+
+  /* Muat ulang halaman satu kali bila kabar server berbeda dari yang dipakai
+     untuk menampilkan halaman (mis. admin baru mengatur ulang jam buka).
+     Tidak dilakukan bila murid sudah mengetik password atau sudah login. */
+  function muatUlangSekali(){
+    var k = el('konten'), m = el('hitungMundur'), p = el('pass');
+    var dilayar = (k && k.className.indexOf('hidden') === -1) || (m && m.className.indexOf('hidden') === -1);
+    if(!dilayar || (p && p.value)) return;
+    try{
+      if(sessionStorage.getItem('simfoni_muat_ulang')) return;
+      sessionStorage.setItem('simfoni_muat_ulang', '1');
+    }catch(e){ return; }
+    location.reload();
+  }
+
+  var statusMulai = null, mulaiPada = 0;
+  function mulaiDengan(status, konfig){
+    statusMulai = status; mulaiPada = Date.now();
+    mulai({ status: status, konfig: konfig });
+  }
+  function bedaDenganYangDipakai(baru){
+    if(!statusMulai || !baru) return false;
+    if(statusMulai.dibuka !== !!baru.dibuka) return true;
+    if(!baru.dibuka){
+      var sisaKini = statusMulai.sisaMs - (Date.now() - mulaiPada);
+      if(Math.abs(sisaKini - baru.sisaMs) > 60000) return true;
+    }
+    return false;
+  }
+
+  var cache = bacaCache();
+  var stCache = statusDariCache(cache);
+  if(stCache){
+    /* Pernah dibuka: tampil seketika dari simpanan (form login, atau hitung mundur
+       bila jam buka belum tiba). Kabar terbaru diambil di belakang layar. */
+    mulaiDengan(stCache, cache.konfig);
+    ambilAwal(function(awal){
+      tulisCache(awal);
+      if(bedaDenganYangDipakai(awal.status)){ muatUlangSekali(); }
+    }, function(){});
+  }else{
+    /* Kunjungan pertama: tunggu server paling lama MAKS_TUNGGU_MS. Bila lebih lambat,
+       halaman tampil lebih dulu dengan pengaturan bawaan; begitu server menjawab dan
+       ternyata pengumuman belum dibuka, halaman dimuat ulang sekali agar menampilkan
+       hitung mundur. (Login tetap diperiksa server, jadi tidak bisa dilewati.) */
+    var sudahMulai = false, pewaktuTunggu = null;
+    function tampilTanpaServer(){
+      if(sudahMulai) return; sudahMulai = true;
+      mulaiDengan({ dibuka: true, sisaMs: 0, waktuTeks: '' }, KONFIG_BAKU);
+    }
+    pewaktuTunggu = setTimeout(tampilTanpaServer, MAKS_TUNGGU_MS);
+    ambilAwal(function(awal){
+      tulisCache(awal);
+      if(!sudahMulai){
+        sudahMulai = true; clearTimeout(pewaktuTunggu);
+        mulaiDengan(awal.status, awal.konfig);
+      }else if(bedaDenganYangDipakai(awal.status)){
+        muatUlangSekali();
+      }
+    }, function(err){
+      clearTimeout(pewaktuTunggu);
+      if(sudahMulai) return;
+      if(KONFIG_BAKU && KONFIG_BAKU.namaApp){ tampilTanpaServer(); }
+      else { sudahMulai = true; tampilGalat(err); }
+    });
+  }
+})();
+</script>
+<script type="text/plain" id="kodeUtama">
 (function(){
   'use strict';
 
@@ -1646,11 +1893,11 @@ body.hemat-animasi #tombolLogout{
      dibuat (lihat doGet di Kode.gs), jadi halaman TIDAK perlu satu putaran
      panggilan ke server hanya untuk tahu apakah pengumuman sudah dibuka.
      Panggilan itu dulu menambah jeda 1-3 detik sebelum form login muncul. */
-  var STATUS_AWAL = <?!= statusAwal ?>;
+  var STATUS_AWAL = window.__AWAL.status;
 
   /* Nama Aplikasi, Nama Sekolah, alamat logo, dan Kata Motivasi dari sheet
      TOOLS — ikut disisipkan server saat halaman dibuat (lihat doGet). */
-  var KONFIG = <?!= konfig ?>;
+  var KONFIG = window.__AWAL.konfig;
 
   /* -------------------- penyimpanan (bisa diblokir di HP) -------------------- */
   function simpan(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
