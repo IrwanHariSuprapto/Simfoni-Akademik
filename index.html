@@ -1297,13 +1297,13 @@ body.hemat-animasi #tombolLogout{
            class="logo-img js-logo" alt="Logo SMAN 1 Toboali">
       <div class="title js-app">INFORMASI HASIL AKADEMIK</div>
       <div class="sekolah js-sekolah">SMA NEGERI 1 TOBOALI</div>
-      <div class="subtitle" id="motto">Masuk dengan NISN dan password Anda</div>
+      <div class="subtitle" id="motto">Masuk dengan username dan password Anda</div>
     </div>
 
     <form id="formLogin" novalidate>
       <div class="field">
         <input type="text" id="nis" placeholder=" " autocomplete="username">
-        <label for="nis">NISN</label>
+        <label for="nis">Username</label>
         <span class="field-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                stroke-linecap="round" stroke-linejoin="round">
@@ -1336,7 +1336,7 @@ body.hemat-animasi #tombolLogout{
         <label class="check">
           <input type="checkbox" id="ingat" checked>
           <span class="box"></span>
-          <span>Ingat NISN saya</span>
+          <span>Ingat username saya</span>
         </label>
         <button type="button" class="link" id="tautLupa">Lupa password?</button>
       </div>
@@ -1365,7 +1365,7 @@ body.hemat-animasi #tombolLogout{
     <form id="formReset" novalidate>
       <div class="field">
         <input type="text" id="rNisn" placeholder=" ">
-        <label for="rNisn">NISN</label>
+        <label for="rNisn">Username</label>
         <span class="field-line"></span>
       </div>
 
@@ -2145,20 +2145,20 @@ body.hemat-animasi #tombolLogout{
     ev.preventDefault();
     bersih(alertLogin);
 
-    var nisn = inputNis.value.replace(/\s/g,'');
+    var nisn = inputNis.value.trim();   // username atau NISN
     var pw = inputPass.value;
 
     tandai(inputNis, nisn === '');
     tandai(inputPass, pw === '');
     if(nisn === '' || pw === ''){
-      pesan(alertLogin,'NISN DAN PASSWORD TIDAK BOLEH KOSONG');
+      pesan(alertLogin,'USERNAME DAN PASSWORD TIDAK BOLEH KOSONG');
       getar(kartuLogin); return false;
     }
 
     sibuk(btnLogin,true,[inputNis,inputPass]);
 
     /* Umpan balik selama menunggu server (bisa beberapa detik saat ramai). */
-    pesan(alertLogin,'Memeriksa NISN dan password...','ok');
+    pesan(alertLogin,'Memeriksa username dan password...','ok');
     clearTimeout(pewaktuProgres);
     pewaktuProgres = setTimeout(function(){
       pesan(alertLogin,'Masih memproses, mohon tunggu sebentar...','ok');
@@ -2182,7 +2182,7 @@ body.hemat-animasi #tombolLogout{
             .statusPembukaan();
           return;
         }
-        if(hasil === 'NOUSER'){ pesan(alertLogin,'NISN TIDAK DITEMUKAN'); getar(kartuLogin); return; }
+        if(hasil === 'NOUSER'){ pesan(alertLogin,'USERNAME TIDAK DITEMUKAN'); getar(kartuLogin); return; }
         if(hasil === 'FAILED'){ pesan(alertLogin,'PASSWORD SALAH'); getar(kartuLogin); return; }
         if(hasil === 'LOCKED'){
           pesan(alertLogin,'TERLALU BANYAK PERCOBAAN.<br>Coba lagi 15 menit lagi.');
@@ -2220,7 +2220,7 @@ body.hemat-animasi #tombolLogout{
 
   function bukaPanelReset(){
     bersih(alertReset);
-    rNisn.value = inputNis.value.replace(/\s/g,'');
+    rNisn.value = inputNis.value.trim();
     rIbu.value = ''; rPw.value = ''; rPw2.value = '';
     tampilkan(kartuReset);
   }
@@ -2236,7 +2236,7 @@ body.hemat-animasi #tombolLogout{
     ev.preventDefault();
     bersih(alertReset);
 
-    var nisn = rNisn.value.replace(/\s/g,'');
+    var nisn = rNisn.value.trim();
     var ibu = rIbu.value, pw = rPw.value, pw2 = rPw2.value;
 
     tandai(rNisn, nisn === '');
@@ -2245,7 +2245,7 @@ body.hemat-animasi #tombolLogout{
     tandai(rPw2, pw2 !== pw || pw2 === '');
 
     if(nisn === '' || ibu.replace(/\s/g,'') === ''){
-      pesan(alertReset,'NISN DAN NAMA IBU HARUS DIISI'); getar(kartuReset); return false;
+      pesan(alertReset,'USERNAME DAN NAMA IBU HARUS DIISI'); getar(kartuReset); return false;
     }
     if(pw.length < 8){
       pesan(alertReset,'PASSWORD BARU MINIMAL 8 KARAKTER'); getar(kartuReset); return false;
@@ -2271,7 +2271,7 @@ body.hemat-animasi #tombolLogout{
           }
           return;
         }
-        if(hasil === 'NOUSER'){ pesan(alertReset,'NISN TIDAK DITEMUKAN'); }
+        if(hasil === 'NOUSER'){ pesan(alertReset,'USERNAME TIDAK DITEMUKAN'); }
         else if(hasil === 'VERIFIKASI_GAGAL'){
           pesan(alertReset,'NAMA IBU KANDUNG TIDAK COCOK<br>dengan data sekolah. Hubungi wali kelas bila datanya keliru.');
         }
@@ -2918,7 +2918,7 @@ body.hemat-animasi #tombolLogout{
   };
 
   /* -------------------- logout --------------------
-     Username & password selalu dikosongkan, KECUALI "Ingat NISN saya"
+     Username & password selalu dikosongkan, KECUALI "Ingat username saya"
      masih dicentang — dalam hal itu NISN dipertahankan (diambil dari
      penyimpanan), tapi password tetap selalu dikosongkan. */
   el('tombolLogout').onclick = function(){
